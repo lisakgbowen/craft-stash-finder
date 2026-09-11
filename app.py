@@ -218,14 +218,7 @@ div[data-baseweb="select"] > div{
   border-radius:18px;
   margin:0 auto 10px;
 }
-.dragonfly-art{
-  position:absolute;
-  right:24px;
-  bottom:12px;
-  width:92px;
-  max-height:70px;
-  object-fit:contain;
-  mix-blend-mode:multiply;
+
 }
 .sidebar-art{
   display:block;
