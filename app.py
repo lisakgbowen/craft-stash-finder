@@ -262,6 +262,32 @@ div[data-baseweb="select"] > div{
   margin:0 auto 4px;
 }
 
+/* Mobile improvements */
+@media (max-width: 700px) {
+  .block-container {
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+    padding-top: 0.5rem;
+  }
+  .hero {
+    padding: 14px;
+    border-radius: 18px;
+  }
+  .result-card {
+    padding: 14px;
+    overflow-wrap: anywhere;
+  }
+  .result-meta {
+    font-size: 0.95rem;
+  }
+  .quick-card {
+    min-height: 90px;
+  }
+  .quick-art {
+    height: 72px;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -347,13 +373,18 @@ if page == "Find My Stash":
 
     st.markdown('<div class="panel"><div class="panel-title">🔎 Search Your Craft Stash</div></div>', unsafe_allow_html=True)
 
-    query = st.text_input(
-        "Search",
-        placeholder="Try: pink ribbon, brass brads, floral cardstock, glue gun..."
-    )
-
     categories = ["All"] + sorted([x for x in df["Category"].unique() if str(x).strip()])
-    category = st.selectbox("Category", categories)
+
+    # Put search controls in a form so the mobile keyboard's Enter/Search key
+    # submits reliably. The visible Search button also gives phone users a
+    # clear tap target.
+    with st.form("stash_search_form", clear_on_submit=False):
+        query = st.text_input(
+            "Search",
+            placeholder="Try: pink ribbon, brass brads, floral cardstock, glue gun..."
+        )
+        category = st.selectbox("Category", categories)
+        st.form_submit_button("🔎 Search", use_container_width=True)
 
     st.caption("Quick searches")
     qcols = st.columns(5)
@@ -407,7 +438,16 @@ elif page == "Browse Inventory":
     if storage != "All":
         filtered = filtered[filtered["Storage Unit"] == storage]
 
-    st.dataframe(filtered, use_container_width=True, hide_index=True)
+    st.caption(f"Showing {len(filtered)} item{'s' if len(filtered) != 1 else ''}.")
+
+    # Responsive cards keep every important field visible on phones. A wide
+    # dataframe forces users to scroll sideways and can make columns look
+    # missing on small screens.
+    if len(filtered) == 0:
+        st.info("No inventory items match these filters.")
+    else:
+        for _, row in filtered.iterrows():
+            show_card(row)
 
 elif page == "Storage Map":
     st.markdown("## 📦 Storage Map")
