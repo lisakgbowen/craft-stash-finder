@@ -1,5 +1,6 @@
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from pathlib import Path
 import base64
@@ -354,6 +355,24 @@ def load_inventory():
 
 df = load_inventory()
 
+
+def jump_to_results():
+    """Smoothly scroll the parent Streamlit page to the results anchor."""
+    components.html(
+        """
+        <script>
+        setTimeout(function () {
+            const doc = window.parent.document;
+            const target = doc.getElementById("craft-results-anchor");
+            if (target) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }, 250);
+        </script>
+        """,
+        height=0,
+    )
+
 QUESTION_STOPWORDS = {
     "a","an","any","are","can","could","do","does","for","have","how","i","in",
     "is","it","me","my","of","please","put","should","the","there","to","where",
@@ -486,6 +505,8 @@ if page == "Find My Stash":
     _, return_intent = parse_inventory_question(effective_query)
 
     if effective_query:
+        st.markdown('<div id="craft-results-anchor"></div>', unsafe_allow_html=True)
+        jump_to_results()
         st.markdown("### Results")
         if len(results) == 0:
             st.warning("I couldn't confirm a match in the current inventory. Try the item name by itself, or check whether the item has been inventoried yet.")
