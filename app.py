@@ -94,21 +94,9 @@ section[data-testid="stSidebar"] .stRadio > label{
   margin-bottom:18px;
   box-shadow:0 12px 28px rgba(173,86,125,.10);
 }
-.hero::before{
-  content:"🌸";
-  position:absolute;
-  left:18px;
-  top:10px;
-  font-size:3.1rem;
-  opacity:.9;
+
 }
-.hero::after{
-  content:"🎀  🌿  🌸";
-  position:absolute;
-  right:26px;
-  top:18px;
-  font-size:2rem;
-  opacity:.9;
+
 }
 .brandline{
   color:var(--rose-dark);
