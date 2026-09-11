@@ -385,6 +385,63 @@ li[role="option"][aria-selected="true"] {
   color-scheme: light;
 }
 
+
+
+/* Improve button contrast on mobile/desktop */
+.stButton > button,
+.stFormSubmitButton > button,
+button[kind="primary"],
+button[kind="secondary"] {
+  background-color: #f2d6df !important;
+  color: #20324a !important;
+  border: 1px solid #c78fa4 !important;
+  font-weight: 700 !important;
+}
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover,
+button[kind="primary"]:hover,
+button[kind="secondary"]:hover {
+  background-color: #e9c4d1 !important;
+  color: #20324a !important;
+  border-color: #b67990 !important;
+}
+
+/* Make warning/info/success messages readable on phone themes */
+div[data-testid="stAlert"] *,
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span,
+div[data-testid="stAlert"] div {
+  color: #20324a !important;
+  opacity: 1 !important;
+}
+
+/* Keep the warning box light with dark text */
+div[data-testid="stAlert"] {
+  color: #20324a !important;
+}
+
+/* Extra mobile protection */
+@media (max-width: 700px) {
+  .stButton > button,
+  .stFormSubmitButton > button,
+  button[kind="primary"],
+  button[kind="secondary"] {
+    background-color: #f2d6df !important;
+    color: #20324a !important;
+    -webkit-text-fill-color: #20324a !important;
+  }
+
+  div[data-testid="stAlert"] *,
+  div[data-testid="stAlert"] p,
+  div[data-testid="stAlert"] span,
+  div[data-testid="stAlert"] div {
+    color: #20324a !important;
+    -webkit-text-fill-color: #20324a !important;
+    opacity: 1 !important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
