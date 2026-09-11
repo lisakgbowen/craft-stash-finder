@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 import base64
 import html
+import re
 
 st.set_page_config(
     page_title="Craft Stash Finder",
@@ -353,18 +354,46 @@ def load_inventory():
 
 df = load_inventory()
 
+QUESTION_STOPWORDS = {
+    "a","an","any","are","can","could","do","does","for","have","how","i","in",
+    "is","it","me","my","of","please","put","should","the","there","to","where",
+    "which","what","whats","what's","would","you","your","back","return","go"
+}
+
+def parse_inventory_question(query):
+    """Turn a natural-language inventory question into useful search terms."""
+    raw = (query or "").strip()
+    lower = raw.lower()
+
+    # Identify questions about returning an item to its designated home.
+    return_intent = bool(re.search(
+        r"\b(return|put\s+.*\bback|where\s+should\s+.*\bgo|where\s+do\s+i\s+put)\b",
+        lower
+    ))
+
+    # Keep letters/numbers plus common item punctuation, then remove conversational filler.
+    cleaned = re.sub(r"[^a-z0-9&+\-/' ]+", " ", lower)
+    tokens = [t.strip("'") for t in cleaned.split()]
+    meaningful = [t for t in tokens if t and t not in QUESTION_STOPWORDS]
+
+    return " ".join(meaningful), return_intent
+
 def run_search(query, category="All"):
     working = df.copy()
     if category != "All":
         working = working[working["Category"] == category]
-    q = (query or "").strip().lower()
+
+    q, _ = parse_inventory_question(query)
     if not q:
         return working
-    terms = [t for t in q.replace(","," ").split() if t]
+
+    terms = [t for t in q.split() if t]
     mask = []
     for _, row in working.iterrows():
         hay = " ".join(str(row[c]) for c in working.columns).lower()
+        # All meaningful item/location terms must be present somewhere in the row.
         mask.append(all(term in hay for term in terms))
+
     return working[pd.Series(mask, index=working.index)]
 
 def show_card(row):
@@ -428,7 +457,7 @@ if page == "Find My Stash":
     with st.form("stash_search_form", clear_on_submit=False):
         query = st.text_input(
             "Search",
-            placeholder="Try: pink ribbon, brass brads, floral cardstock, glue gun..."
+            placeholder="Ask: Where do I return my glue gun? Do I have pink ribbon?..."
         )
         category = st.selectbox("Category", categories)
         st.form_submit_button("🔎 Search", use_container_width=True)
@@ -454,13 +483,33 @@ if page == "Find My Stash":
 
     effective_query = selected_quick if selected_quick else query
     results = run_search(effective_query, category)
+    _, return_intent = parse_inventory_question(effective_query)
 
     if effective_query:
         st.markdown("### Results")
         if len(results) == 0:
-            st.warning("I couldn't confirm a match in the current inventory. Try a broader term or check whether the item has been inventoried yet.")
+            st.warning("I couldn't confirm a match in the current inventory. Try the item name by itself, or check whether the item has been inventoried yet.")
         else:
-            st.success(f"Found {len(results)} matching item{'s' if len(results)!=1 else ''}.")
+            # For a return question, put the designated home location first.
+            if return_intent:
+                if len(results) == 1:
+                    row = results.iloc[0]
+                    loc = " → ".join([
+                        str(x) for x in [row["Area"], row["Storage Unit"], row["Shelf/Container"]]
+                        if str(x).strip()
+                    ])
+                    st.success(f"Put **{row['Item']}** back at: **{loc if loc else 'Location not listed'}**")
+                else:
+                    st.info("I found more than one possible match. Here are the designated locations for each one.")
+                    for _, row in results.head(50).iterrows():
+                        loc = " → ".join([
+                            str(x) for x in [row["Area"], row["Storage Unit"], row["Shelf/Container"]]
+                            if str(x).strip()
+                        ])
+                        st.markdown(f"**{row['Item']}** → {loc if loc else 'Location not listed'}")
+            else:
+                st.success(f"Found {len(results)} matching item{'s' if len(results)!=1 else ''}.")
+
             for _,row in results.head(50).iterrows():
                 show_card(row)
     else:
