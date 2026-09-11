@@ -442,6 +442,33 @@ div[data-testid="stAlert"] {
   }
 }
 
+
+
+/* Clickable dashboard summary cards */
+button[data-testid="stBaseButton-secondary"]:has(p:first-child) {
+  min-height: 96px;
+}
+
+/* The first three dashboard buttons inherit the app palette; ensure their
+   multi-line labels remain readable and centered on phones too. */
+div[data-testid="stColumn"] .stButton > button p {
+  white-space: pre-line !important;
+  text-align: center !important;
+  line-height: 1.35 !important;
+  color: #20324a !important;
+  -webkit-text-fill-color: #20324a !important;
+}
+
+@media (max-width: 700px) {
+  div[data-testid="stColumn"] .stButton > button {
+    min-height: 88px !important;
+    padding: 0.65rem 0.45rem !important;
+  }
+  div[data-testid="stColumn"] .stButton > button p {
+    font-size: 0.93rem !important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -635,10 +662,75 @@ st.markdown(f"""
 # PAGES
 # -----------------------------
 if page == "Find My Stash":
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Inventory Items", len(df))
-    c2.metric("Categories", df["Category"].nunique())
-    c3.metric("Storage Units", df["Storage Unit"].nunique())
+    # Clickable dashboard summary cards work on desktop and mobile.
+    if "summary_view" not in st.session_state:
+        st.session_state.summary_view = None
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        if st.button(
+            f"📦 Inventory Items\n\n{len(df)}",
+            key="summary_inventory",
+            use_container_width=True
+        ):
+            st.session_state.summary_view = (
+                None if st.session_state.summary_view == "inventory" else "inventory"
+            )
+
+    with c2:
+        if st.button(
+            f"🏷️ Categories\n\n{df['Category'].nunique()}",
+            key="summary_categories",
+            use_container_width=True
+        ):
+            st.session_state.summary_view = (
+                None if st.session_state.summary_view == "categories" else "categories"
+            )
+
+    with c3:
+        if st.button(
+            f"🗄️ Storage Units\n\n{df['Storage Unit'].nunique()}",
+            key="summary_storage",
+            use_container_width=True
+        ):
+            st.session_state.summary_view = (
+                None if st.session_state.summary_view == "storage" else "storage"
+            )
+
+    # Expand the selected summary directly below the dashboard cards.
+    if st.session_state.summary_view == "inventory":
+        st.markdown("### 📦 All Inventory Items")
+        st.caption(f"{len(df)} inventory entries")
+        for _, row in df.sort_values(["Category", "Item"]).iterrows():
+            show_card(row)
+
+    elif st.session_state.summary_view == "categories":
+        st.markdown("### 🏷️ Categories")
+        category_counts = (
+            df[df["Category"].astype(str).str.strip() != ""]
+            .groupby("Category")
+            .size()
+            .sort_index()
+        )
+        for category_name, count in category_counts.items():
+            with st.expander(f"{category_name} ({count})"):
+                rows = df[df["Category"] == category_name].sort_values("Item")
+                for _, row in rows.iterrows():
+                    show_card(row)
+
+    elif st.session_state.summary_view == "storage":
+        st.markdown("### 🗄️ Storage Units")
+        storage_values = sorted(
+            [x for x in df["Storage Unit"].unique() if str(x).strip()]
+        )
+        for unit in storage_values:
+            rows = df[df["Storage Unit"] == unit].sort_values(
+                ["Area", "Shelf/Container", "Item"]
+            )
+            with st.expander(f"{unit} ({len(rows)})"):
+                for _, row in rows.iterrows():
+                    show_card(row)
 
     st.markdown('<div class="panel"><div class="panel-title">🔎 Search Your Craft Stash</div></div>', unsafe_allow_html=True)
 
