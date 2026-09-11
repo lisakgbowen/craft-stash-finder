@@ -288,6 +288,53 @@ div[data-baseweb="select"] > div{
   }
 }
 
+
+/* Force Streamlit text to remain readable on light cards, including mobile */
+div[data-testid="stMetric"] label,
+div[data-testid="stMetric"] [data-testid="stMetricLabel"],
+div[data-testid="stMetric"] [data-testid="stMetricValue"],
+div[data-testid="stMetric"] p,
+.stTextInput label,
+.stSelectbox label,
+.stForm label,
+.stCaptionContainer,
+.stMarkdown,
+.stMarkdown p {
+  color: var(--ink) !important;
+}
+
+/* Input/select text and placeholders */
+input,
+div[data-baseweb="select"] *,
+div[data-baseweb="input"] * {
+  color: var(--ink) !important;
+}
+
+input::placeholder {
+  color: #796a73 !important;
+  opacity: 1 !important;
+}
+
+/* Keep button text readable */
+.stButton > button,
+.stFormSubmitButton > button {
+  color: var(--rose-dark) !important;
+}
+
+/* Extra protection for small screens */
+@media (max-width: 700px) {
+  div[data-testid="stMetric"] label,
+  div[data-testid="stMetric"] [data-testid="stMetricLabel"],
+  div[data-testid="stMetric"] [data-testid="stMetricValue"],
+  .stTextInput label,
+  .stSelectbox label,
+  .stForm label,
+  .stCaptionContainer {
+    color: #20324a !important;
+    opacity: 1 !important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
