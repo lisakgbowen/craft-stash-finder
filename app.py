@@ -344,10 +344,7 @@ with st.sidebar:
 # -----------------------------
 st.markdown(f"""
 <div class="hero">
-  {asset_img("header.png", "hero-art", "Floral ribbon craft banner")}
-  <div class="brandline">Craft Stash Finder</div>
-  <div class="byline">by Handmade with Love and Crunchies by Lisa</div>
-  <div class="tagline">Find it • Use it • Create something beautiful</div>
+  {asset_img("header.png", "hero-art", "Craft Stash Finder banner")}
   {asset_img("dragonfly.png", "dragonfly-art", "Dragonfly")}
 </div>
 """, unsafe_allow_html=True)
