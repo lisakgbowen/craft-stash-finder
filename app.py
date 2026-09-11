@@ -410,6 +410,92 @@ QUESTION_STOPWORDS = {
     "which","what","whats","what's","would","you","your","back","return","go"
 }
 
+
+# These words help rank close alternatives, but suggestions are ONLY returned
+# when a matching item actually exists in the inventory.
+ALTERNATIVE_TERMS = {
+    "pumpkin": ["orange"],
+    "scarlet": ["red"],
+    "crimson": ["red"],
+    "burgundy": ["red"],
+    "navy": ["blue"],
+    "aqua": ["blue", "teal"],
+    "turquoise": ["teal", "blue"],
+    "fuchsia": ["pink"],
+    "magenta": ["pink"],
+    "lavender": ["purple"],
+    "violet": ["purple"],
+    "ivory": ["cream", "white"],
+    "beige": ["kraft", "tan", "brown"],
+}
+
+def inventory_text(row):
+    return " ".join(str(row[c]) for c in df.columns).lower()
+
+def find_alternatives(query, category="All", limit=3):
+    """Find close, inventory-backed alternatives when an exact search has no match."""
+    working = df.copy()
+    if category != "All":
+        working = working[working["Category"] == category]
+
+    cleaned, _ = parse_inventory_question(query)
+    terms = [t for t in cleaned.split() if t]
+    if not terms:
+        return working.iloc[0:0]
+
+    # Recognize category/item-type words from the actual inventory itself.
+    category_terms = set()
+    for cat in df["Category"].astype(str):
+        category_terms.update(re.findall(r"[a-z0-9]+", cat.lower()))
+
+    # First narrow to rows that share the requested category/type when possible.
+    type_terms = [t for t in terms if t in category_terms]
+    candidates = working
+    if type_terms:
+        mask = []
+        for _, row in candidates.iterrows():
+            hay = inventory_text(row)
+            mask.append(all(t in hay for t in type_terms))
+        candidates = candidates[pd.Series(mask, index=candidates.index)]
+
+    if len(candidates) == 0:
+        return candidates
+
+    scored = []
+    for idx, row in candidates.iterrows():
+        hay = inventory_text(row)
+        score = 0
+
+        # Reward requested words already shared with a candidate.
+        for t in terms:
+            if t in hay:
+                score += 2
+
+        # Strongly reward a known close descriptor, e.g. pumpkin -> orange.
+        for t in terms:
+            for alt in ALTERNATIVE_TERMS.get(t, []):
+                if alt in hay:
+                    score += 8
+
+        # Prefer rows whose category/type matches the request.
+        for t in type_terms:
+            if t in hay:
+                score += 3
+
+        if score > 0:
+            scored.append((score, idx))
+
+    if not scored:
+        return candidates.head(limit)
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    best_score = scored[0][0]
+
+    # If a strong synonym match exists, show only equally strong close options.
+    strong = [(s, i) for s, i in scored if s >= best_score - 1]
+    chosen = strong[:limit] if best_score >= 8 else scored[:limit]
+    return df.loc[[idx for _, idx in chosen]]
+
 def parse_inventory_question(query):
     """Turn a natural-language inventory question into useful search terms."""
     raw = (query or "").strip()
@@ -527,7 +613,26 @@ if page == "Find My Stash":
 
         st.markdown("### Results")
         if len(results) == 0:
-            st.warning("I couldn't confirm a match in the current inventory. Try the item name by itself, or check whether the item has been inventoried yet.")
+            alternatives = find_alternatives(active_query, active_category)
+
+            # State clearly that the requested item was not found, then offer
+            # only related items that truly exist in this inventory.
+            cleaned_query, _ = parse_inventory_question(active_query)
+            requested = cleaned_query if cleaned_query else active_query.strip()
+
+            if len(alternatives) == 0:
+                st.warning(f"I don't see **{requested}** in the current inventory, and I couldn't confirm a related alternative.")
+            else:
+                st.warning(f"I don't see **{requested}** in the current inventory.")
+                st.markdown("#### You may already have a close alternative:")
+                for _, row in alternatives.iterrows():
+                    loc = " → ".join([
+                        str(x) for x in [row["Area"], row["Storage Unit"], row["Shelf/Container"]]
+                        if str(x).strip()
+                    ])
+                    note = f" — **{row['Notes']}**" if str(row["Notes"]).strip() else ""
+                    st.info(f"**{row['Item']}** — {loc if loc else 'Location not listed'}{note}")
+                    show_card(row)
         else:
             if return_intent:
                 if len(results) == 1:
