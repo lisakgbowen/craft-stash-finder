@@ -325,8 +325,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption(f"📦 {len(df)} inventory items loaded")
     st.markdown(asset_img("sidebar_quote.png", "sidebar-art", "Craft stash motto"), unsafe_allow_html=True)
-    st.markdown("🌸 **Find it. Use it. Don't buy it twice.**")
-
+   
 # -----------------------------
 # HERO
 # -----------------------------
