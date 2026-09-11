@@ -1,6 +1,5 @@
 
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 from pathlib import Path
 import base64
@@ -337,6 +336,55 @@ input::placeholder {
   }
 }
 
+
+/* Keep Streamlit form controls light and readable on phones and in dark browser themes */
+div[data-testid="stTextInput"] div[data-baseweb="input"],
+div[data-testid="stTextInput"] div[data-baseweb="input"] > div,
+div[data-testid="stTextInput"] input,
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+div[data-testid="stSelectbox"] [role="combobox"] {
+  background:#ffffff !important;
+  background-color:#ffffff !important;
+  color:#20324a !important;
+  -webkit-text-fill-color:#20324a !important;
+  opacity:1 !important;
+}
+
+div[data-testid="stTextInput"] input::placeholder {
+  color:#796a73 !important;
+  -webkit-text-fill-color:#796a73 !important;
+  opacity:1 !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] *,
+div[data-testid="stSelectbox"] [role="combobox"] *,
+div[data-testid="stSelectbox"] svg {
+  color:#20324a !important;
+  fill:#20324a !important;
+  -webkit-text-fill-color:#20324a !important;
+}
+
+/* Selectbox popup is rendered in a portal, so style it separately */
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] > div,
+ul[role="listbox"],
+li[role="option"] {
+  background:#ffffff !important;
+  background-color:#ffffff !important;
+  color:#20324a !important;
+  -webkit-text-fill-color:#20324a !important;
+}
+li[role="option"]:hover,
+li[role="option"][aria-selected="true"] {
+  background:#fff1f6 !important;
+  color:#20324a !important;
+}
+
+/* Help mobile Safari/Chrome honor the intended light form-control palette */
+.stApp {
+  color-scheme: light;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -355,23 +403,6 @@ def load_inventory():
 
 df = load_inventory()
 
-
-def jump_to_results():
-    """Smoothly scroll the parent Streamlit page to the results anchor."""
-    components.html(
-        """
-        <script>
-        setTimeout(function () {
-            const doc = window.parent.document;
-            const target = doc.getElementById("craft-results-anchor");
-            if (target) {
-                target.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-        }, 250);
-        </script>
-        """,
-        height=0,
-    )
 
 QUESTION_STOPWORDS = {
     "a","an","any","are","can","could","do","does","for","have","how","i","in",
@@ -470,48 +501,34 @@ if page == "Find My Stash":
 
     categories = ["All"] + sorted([x for x in df["Category"].unique() if str(x).strip()])
 
-    # Put search controls in a form so the mobile keyboard's Enter/Search key
-    # submits reliably. The visible Search button also gives phone users a
-    # clear tap target.
+    # Search form. Results are deliberately rendered immediately below this
+    # form after submission so phone users do not need JavaScript auto-scroll.
     with st.form("stash_search_form", clear_on_submit=False):
         query = st.text_input(
             "Search",
             placeholder="Ask: Where do I return my glue gun? Do I have pink ribbon?..."
         )
         category = st.selectbox("Category", categories)
-        st.form_submit_button("🔎 Search", use_container_width=True)
+        submitted = st.form_submit_button("🔎 Search", use_container_width=True)
 
-    st.caption("Quick searches")
-    qcols = st.columns(5)
-    quick = [
-        ("Cardstock", "cat_cardstock.png"),
-        ("Ribbon", "cat_ribbon.png"),
-        ("Embellishments", "cat_embellishments.png"),
-        ("Tools", "cat_tools.png"),
-        ("Equipment", "cat_machines.png"),
-    ]
-    selected_quick = None
-    for col, (label, graphic) in zip(qcols, quick):
-        with col:
-            st.markdown(
-                f'<div class="quick-card">{asset_img(graphic, "quick-art", label)}</div>',
-                unsafe_allow_html=True
-            )
-            if st.button(label, key=f"quick_{label}"):
-                selected_quick = label
+    # Store an active search across Streamlit reruns. Quick-search buttons set
+    # the same state and rerun once, which moves their results directly below
+    # the form instead of leaving them below all the quick-search artwork.
+    if submitted:
+        st.session_state["active_stash_query"] = query
+        st.session_state["active_stash_category"] = category
 
-    effective_query = selected_quick if selected_quick else query
-    results = run_search(effective_query, category)
-    _, return_intent = parse_inventory_question(effective_query)
+    active_query = st.session_state.get("active_stash_query", "")
+    active_category = st.session_state.get("active_stash_category", category)
 
-    if effective_query:
-        st.markdown('<div id="craft-results-anchor"></div>', unsafe_allow_html=True)
-        jump_to_results()
+    if active_query:
+        results = run_search(active_query, active_category)
+        _, return_intent = parse_inventory_question(active_query)
+
         st.markdown("### Results")
         if len(results) == 0:
             st.warning("I couldn't confirm a match in the current inventory. Try the item name by itself, or check whether the item has been inventoried yet.")
         else:
-            # For a return question, put the designated home location first.
             if return_intent:
                 if len(results) == 1:
                     row = results.iloc[0]
@@ -531,9 +548,35 @@ if page == "Find My Stash":
             else:
                 st.success(f"Found {len(results)} matching item{'s' if len(results)!=1 else ''}.")
 
-            for _,row in results.head(50).iterrows():
+            for _, row in results.head(50).iterrows():
                 show_card(row)
+
+        if st.button("← New search / show Quick Searches", key="clear_active_search"):
+            st.session_state.pop("active_stash_query", None)
+            st.session_state.pop("active_stash_category", None)
+            st.rerun()
+
     else:
+        st.caption("Quick searches")
+        qcols = st.columns(5)
+        quick = [
+            ("Cardstock", "cat_cardstock.png"),
+            ("Ribbon", "cat_ribbon.png"),
+            ("Embellishments", "cat_embellishments.png"),
+            ("Tools", "cat_tools.png"),
+            ("Equipment", "cat_machines.png"),
+        ]
+        for col, (label, graphic) in zip(qcols, quick):
+            with col:
+                st.markdown(
+                    f'<div class="quick-card">{asset_img(graphic, "quick-art", label)}</div>',
+                    unsafe_allow_html=True
+                )
+                if st.button(label, key=f"quick_{label}"):
+                    st.session_state["active_stash_query"] = label
+                    st.session_state["active_stash_category"] = category
+                    st.rerun()
+
         st.info("Enter a search above, or use a quick-search button.")
 
 elif page == "Browse Inventory":
