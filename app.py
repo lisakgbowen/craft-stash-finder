@@ -332,7 +332,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class="hero">
   {asset_img("header.png", "hero-art", "Craft Stash Finder banner")}
-  {asset_img("dragonfly.png", "dragonfly-art", "Dragonfly")}
+ 
 </div>
 """, unsafe_allow_html=True)
 
